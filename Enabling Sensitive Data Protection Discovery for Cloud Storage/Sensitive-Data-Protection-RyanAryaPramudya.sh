@@ -26,7 +26,57 @@ echo "${CYAN_TEXT}${BOLD_TEXT}                     RYAN ARYA PRAMUDYA           
 echo "${CYAN_TEXT}${BOLD_TEXT}==================================================================${RESET_FORMAT}"
 echo ""
 
-echo "${YELLOW_TEXT}${BOLD_TEXT}[Task 1] Updating Inspection Template for US SSN...${RESET_FORMAT}"
+echo "${YELLOW_TEXT}${BOLD_TEXT}[Task 1] Creating BigQuery Dataset & Cloud Storage Discovery Config...${RESET_FORMAT}"
+echo "${BLUE_TEXT}Creating BigQuery dataset cloudstorage_discovery...${RESET_FORMAT}"
+bq mk --dataset --location=us $DEVSHELL_PROJECT_ID:cloudstorage_discovery || true
+
+echo "${BLUE_TEXT}Creating discovery_config.json...${RESET_FORMAT}"
+cat <<EOF > discovery_config.json
+{
+  "discoveryConfig": {
+    "displayName": "Cloud Storage Discovery",
+    "status": "RUNNING",
+    "targets": [
+      {
+        "cloudStorageTarget": {
+          "filter": {
+            "allOtherResources": {}
+          }
+        }
+      }
+    ],
+    "actions": [
+      {
+        "publishSummaryToSecurityCommandCenter": {}
+      },
+      {
+        "exportDataProfiles": {
+          "destinationTable": {
+            "projectId": "$DEVSHELL_PROJECT_ID",
+            "datasetId": "cloudstorage_discovery",
+            "tableId": "data_profiles"
+          }
+        }
+      }
+    ]
+  }
+}
+EOF
+
+curl -X POST -s \
+-H "Authorization: Bearer $(gcloud auth application-default print-access-token)" \
+-H "Content-Type: application/json" \
+-d @discovery_config.json \
+"https://dlp.googleapis.com/v2/projects/$DEVSHELL_PROJECT_ID/locations/us/discoveryConfigs" || true
+
+echo "${GREEN_TEXT}✓ Discovery Configuration created successfully!${RESET_FORMAT}"
+echo ""
+
+echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 KLIK 'Check My Progress' UNTUK TASK 1 SEKARANG!${RESET_FORMAT}"
+read -p "Setelah klik Check My Progress di Qwiklabs, tekan [ENTER] untuk lanjut ke Task 2..."
+echo ""
+
+echo "${YELLOW_TEXT}${BOLD_TEXT}[Task 2] Updating Inspection Template for US SSN...${RESET_FORMAT}"
 echo "${BLUE_TEXT}Fetching TEMPLATE_ID from Google Cloud DLP API...${RESET_FORMAT}"
 export TEMPLATE_ID=$(curl -s \
 -H "Authorization: Bearer $(gcloud auth application-default print-access-token)" \
@@ -61,11 +111,11 @@ curl -X PATCH -s \
 echo "${GREEN_TEXT}✓ Inspection Template updated successfully!${RESET_FORMAT}"
 echo ""
 
-echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 KLIK 'Check My Progress' UNTUK TASK 1 SEKARANG!${RESET_FORMAT}"
-read -p "Setelah klik Check My Progress di Qwiklabs, tekan [ENTER] untuk lanjut ke Task 2..."
+echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 KLIK 'Check My Progress' UNTUK TASK 2 SEKARANG!${RESET_FORMAT}"
+read -p "Setelah klik Check My Progress di Qwiklabs, tekan [ENTER] untuk lanjut ke Task 3..."
 echo ""
 
-echo "${YELLOW_TEXT}${BOLD_TEXT}[Task 2] Creating and Posting De-identification Template...${RESET_FORMAT}"
+echo "${YELLOW_TEXT}${BOLD_TEXT}[Task 3] Creating and Posting De-identification Template...${RESET_FORMAT}"
 cat <<EOF > deidentify-template.json
 {
   "deidentifyTemplate": {
@@ -128,7 +178,7 @@ curl -X POST -s \
 echo "${GREEN_TEXT}✓ De-identification Template created successfully!${RESET_FORMAT}"
 echo ""
 
-echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 KLIK 'Check My Progress' UNTUK TASK 2 SEKARANG!${RESET_FORMAT}"
+echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 KLIK 'Check My Progress' UNTUK TASK 3 SEKARANG!${RESET_FORMAT}"
 read -p "Setelah klik Check My Progress di Qwiklabs, tekan [ENTER] untuk menyelesaikan lab..."
 echo ""
 
