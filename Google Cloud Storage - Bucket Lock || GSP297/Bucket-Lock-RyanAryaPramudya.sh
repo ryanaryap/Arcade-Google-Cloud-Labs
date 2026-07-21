@@ -50,7 +50,7 @@ echo "${GREEN_TEXT}✓ Retention policy locked successfully!${RESET_FORMAT}"
 echo ""
 
 echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 CLICK 'Check My Progress' FOR TASK 3 NOW!${RESET_FORMAT}"
-read -p "After clicking Check My Progress in Qwiklabs, press [ENTER] to continue to Task 4..."
+read -p "After clicking Check My Progress in Qwiklabs, press [ENTER] to continue to Tasks 4 & 5..."
 echo ""
 
 echo "${YELLOW_TEXT}${BOLD_TEXT}[Task 4] Setting Up Temporary Hold & Removing Object...${RESET_FORMAT}"
@@ -61,10 +61,6 @@ echo "${BLUE_TEXT}Waiting 10 seconds for retention duration to expire...${RESET_
 sleep 10
 gsutil rm "gs://$BUCKET/dummy_transactions"
 echo "${GREEN_TEXT}✓ Temporary hold set, released, and dummy_transactions removed!${RESET_FORMAT}"
-echo ""
-
-echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 CLICK 'Check My Progress' FOR TASK 4 NOW!${RESET_FORMAT}"
-read -p "After clicking Check My Progress in Qwiklabs, press [ENTER] to continue to Task 5..."
 echo ""
 
 echo "${YELLOW_TEXT}${BOLD_TEXT}[Task 5] Setting Up Event-Based Hold & Removing Object...${RESET_FORMAT}"
@@ -78,7 +74,7 @@ gsutil rm "gs://$BUCKET/dummy_loan"
 echo "${GREEN_TEXT}✓ Event-based hold set, released, and dummy_loan removed!${RESET_FORMAT}"
 echo ""
 
-echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 CLICK 'Check My Progress' FOR TASK 5 NOW!${RESET_FORMAT}"
+echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 CLICK 'Check My Progress' FOR TASK 4 & TASK 5 NOW!${RESET_FORMAT}"
 read -p "After clicking Check My Progress in Qwiklabs, press [ENTER] to finish the lab..."
 echo ""
 
