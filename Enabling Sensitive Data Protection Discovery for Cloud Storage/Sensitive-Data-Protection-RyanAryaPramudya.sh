@@ -38,67 +38,15 @@ gcloud services enable dlp.googleapis.com --quiet
 TOKEN=$(gcloud auth application-default print-access-token 2>/dev/null || gcloud auth print-access-token)
 
 # -------------------------------------------------------------------------
-# TASK 1: Create and schedule scan configuration
+# TASK 1: BigQuery Dataset cloudstorage_discovery Setup
 # -------------------------------------------------------------------------
-echo "${YELLOW_TEXT}${BOLD_TEXT}[Task 1] Creating BigQuery Dataset & Cloud Storage Discovery Config...${RESET_FORMAT}"
+echo "${YELLOW_TEXT}${BOLD_TEXT}[Task 1] Setting up BigQuery Dataset cloudstorage_discovery...${RESET_FORMAT}"
 bq mk --dataset --location=us $DEVSHELL_PROJECT_ID:cloudstorage_discovery 2>/dev/null || true
 
-cat <<EOF > discovery_config.json
-{
-  "discovery_config": {
-    "display_name": "Cloud Storage Discovery",
-    "status": "RUNNING",
-    "targets": [
-      {
-        "cloud_storage_target": {
-          "filter": {
-            "other_cloud_storage_resources": {}
-          },
-          "cadence": {
-            "schema_modified_cadence": {
-              "types": [
-                "NEW"
-              ],
-              "frequency": "UPDATE_FREQUENCY_DAILY"
-            }
-          }
-        }
-      }
-    ],
-    "actions": [
-      {
-        "publish_summary_to_security_command_center": {}
-      },
-      {
-        "export_data_profiles": {
-          "destination_table": {
-            "project_id": "$DEVSHELL_PROJECT_ID",
-            "dataset_id": "cloudstorage_discovery",
-            "table_id": "data_profiles"
-          }
-        }
-      }
-    ]
-  }
-}
-EOF
-
-RESP=$(curl -X POST -s \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d @discovery_config.json \
-  "https://dlp.googleapis.com/v2/projects/$DEVSHELL_PROJECT_ID/locations/us/discoveryConfigs")
-
-echo "$RESP" | jq . 2>/dev/null || echo "$RESP"
-if echo "$RESP" | jq -e '.error' >/dev/null 2>&1; then
-  echo "${RED_TEXT}⚠ Discovery config via API mungkin perlu diaktifkan di UI (Security > Sensitive Data Protection > Discovery > Cloud Storage > Enable). Lanjut...${RESET_FORMAT}"
-else
-  echo "${GREEN_TEXT}✓ Discovery Configuration created successfully!${RESET_FORMAT}"
-fi
+echo "${GREEN_TEXT}✓ BigQuery Dataset cloudstorage_discovery ready!${RESET_FORMAT}"
 echo ""
-
-echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 KLIK 'Check My Progress' UNTUK TASK 1 SEKARANG!${RESET_FORMAT}"
-read -p "Setelah klik Check My Progress di Qwiklabs, tekan [ENTER] untuk lanjut ke Task 2..."
+echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 UNTUK TASK 1: Aktifkan Discovery di Konsol GCP (Security > Sensitive Data Protection > Discovery > Cloud Storage > Enable -> Display Name: Cloud Storage Discovery -> Create).${RESET_FORMAT}"
+read -p "Setelah klik Check My Progress Task 1 di Qwiklabs, tekan [ENTER] untuk lanjut ke Task 2..."
 echo ""
 
 # -------------------------------------------------------------------------
@@ -174,6 +122,7 @@ echo "${BLUE_TEXT}Creating de-identification template us_ssn_deidentify...${RESE
 cat <<EOF > deidentify-template.json
 {
   "deidentifyTemplate": {
+    "name": "projects/$DEVSHELL_PROJECT_ID/locations/global/deidentifyTemplates/us_ssn_deidentify",
     "displayName": "Template De-identifikasi untuk SSN AS",
     "description": "Deidentifies SSN, Email and InfoTypes",
     "deidentifyConfig": {
@@ -215,7 +164,7 @@ RESP=$(curl -X POST -s \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d @deidentify-template.json \
-  "https://dlp.googleapis.com/v2/projects/$DEVSHELL_PROJECT_ID/locations/global/deidentifyTemplates?deidentifyTemplateId=us_ssn_deidentify")
+  "https://dlp.googleapis.com/v2/projects/$DEVSHELL_PROJECT_ID/locations/global/deidentifyTemplates")
 echo "$RESP" | jq . 2>/dev/null || echo "$RESP"
 
 echo "${GREEN_TEXT}✓ Inspection & De-identification Templates configured!${RESET_FORMAT}"
@@ -256,9 +205,6 @@ cat <<EOF > inspect_job.json
             "outputSchema": "BASIC_COLUMNS"
           }
         }
-      },
-      {
-        "publishSummaryToSecurityCommandCenter": {}
       }
     ]
   }
