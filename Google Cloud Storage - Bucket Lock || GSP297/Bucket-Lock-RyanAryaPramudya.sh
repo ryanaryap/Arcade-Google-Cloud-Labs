@@ -39,8 +39,8 @@ gsutil ls -L "gs://$BUCKET/dummy_transactions"
 echo "${GREEN_TEXT}✓ Retention policy set and dummy_transactions uploaded!${RESET_FORMAT}"
 echo ""
 
-echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 CLICK 'Check My Progress' FOR TASK 1 & TASK 2 NOW!${RESET_FORMAT}"
-read -p "After clicking Check My Progress in Qwiklabs, press [ENTER] to continue to Task 3..."
+echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 KLIK 'Check My Progress' UNTUK TASK 1 & TASK 2 SEKARANG!${RESET_FORMAT}"
+read -p "Setelah klik Check My Progress di Qwiklabs, tekan [ENTER] untuk lanjut ke Task 3..."
 echo ""
 
 echo "${YELLOW_TEXT}${BOLD_TEXT}[Task 3] Locking Retention Policy...${RESET_FORMAT}"
@@ -49,33 +49,35 @@ gsutil retention get "gs://$BUCKET"
 echo "${GREEN_TEXT}✓ Retention policy locked successfully!${RESET_FORMAT}"
 echo ""
 
-echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 CLICK 'Check My Progress' FOR TASK 3 NOW!${RESET_FORMAT}"
-read -p "After clicking Check My Progress in Qwiklabs, press [ENTER] to continue to Tasks 4 & 5..."
+echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 KLIK 'Check My Progress' UNTUK TASK 3 SEKARANG!${RESET_FORMAT}"
+read -p "Setelah klik Check My Progress di Qwiklabs, tekan [ENTER] untuk lanjut ke Task 4..."
 echo ""
 
 echo "${YELLOW_TEXT}${BOLD_TEXT}[Task 4] Setting Up Temporary Hold & Removing Object...${RESET_FORMAT}"
 gsutil retention temp set "gs://$BUCKET/dummy_transactions"
-sleep 2
 gsutil retention temp release "gs://$BUCKET/dummy_transactions"
-echo "${BLUE_TEXT}Waiting 10 seconds for retention duration to expire...${RESET_FORMAT}"
-sleep 10
-gsutil rm "gs://$BUCKET/dummy_transactions"
+echo "${BLUE_TEXT}Waiting for retention timer to expire...${RESET_FORMAT}"
+until gsutil rm "gs://$BUCKET/dummy_transactions" 2>/dev/null; do sleep 0.5; done
 echo "${GREEN_TEXT}✓ Temporary hold set, released, and dummy_transactions removed!${RESET_FORMAT}"
 echo ""
 
+echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 KLIK 'Check My Progress' UNTUK TASK 4 SEKARANG!${RESET_FORMAT}"
+read -p "Setelah klik Check My Progress di Qwiklabs, tekan [ENTER] untuk lanjut ke Task 5..."
+echo ""
+
 echo "${YELLOW_TEXT}${BOLD_TEXT}[Task 5] Setting Up Event-Based Hold & Removing Object...${RESET_FORMAT}"
-gsutil retention event-default set "gs://$BUCKET"
+gsutil retention event-default set "gs://$BUCKET/"
 gsutil cp gs://spls/gsp297/dummy_loan "gs://$BUCKET/"
 gsutil ls -L "gs://$BUCKET/dummy_loan"
 gsutil retention event release "gs://$BUCKET/dummy_loan"
-echo "${BLUE_TEXT}Waiting 10 seconds for retention duration to expire...${RESET_FORMAT}"
-sleep 10
-gsutil rm "gs://$BUCKET/dummy_loan"
+gsutil ls -L "gs://$BUCKET/dummy_loan"
+echo "${BLUE_TEXT}Waiting for GCS retention timer to expire...${RESET_FORMAT}"
+until gsutil rm "gs://$BUCKET/dummy_loan" 2>/dev/null; do sleep 0.5; done
 echo "${GREEN_TEXT}✓ Event-based hold set, released, and dummy_loan removed!${RESET_FORMAT}"
 echo ""
 
-echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 CLICK 'Check My Progress' FOR TASK 4 & TASK 5 NOW!${RESET_FORMAT}"
-read -p "After clicking Check My Progress in Qwiklabs, press [ENTER] to finish the lab..."
+echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 KLIK 'Check My Progress' UNTUK TASK 5 SEKARANG!${RESET_FORMAT}"
+read -p "Setelah klik Check My Progress di Qwiklabs, tekan [ENTER] untuk menyelesaikan lab..."
 echo ""
 
 echo "${MAGENTA_TEXT}${BOLD_TEXT}==================================================================${RESET_FORMAT}"
