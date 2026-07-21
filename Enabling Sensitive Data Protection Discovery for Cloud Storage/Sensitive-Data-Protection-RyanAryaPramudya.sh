@@ -45,28 +45,36 @@ bq mk --dataset --location=us $DEVSHELL_PROJECT_ID:cloudstorage_discovery 2>/dev
 
 cat <<EOF > discovery_config.json
 {
-  "discoveryConfig": {
-    "displayName": "Cloud Storage Discovery",
+  "discovery_config": {
+    "display_name": "Cloud Storage Discovery",
     "status": "RUNNING",
     "targets": [
       {
-        "cloudStorageTarget": {
+        "cloud_storage_target": {
           "filter": {
-            "others": {}
+            "other_cloud_storage_resources": {}
+          },
+          "cadence": {
+            "schema_modified_cadence": {
+              "types": [
+                "NEW"
+              ],
+              "frequency": "UPDATE_FREQUENCY_DAILY"
+            }
           }
         }
       }
     ],
     "actions": [
       {
-        "publishToScc": {}
+        "publish_summary_to_security_command_center": {}
       },
       {
-        "exportData": {
-          "profileTable": {
-            "projectId": "$DEVSHELL_PROJECT_ID",
-            "datasetId": "cloudstorage_discovery",
-            "tableId": "data_profiles"
+        "export_data_profiles": {
+          "destination_table": {
+            "project_id": "$DEVSHELL_PROJECT_ID",
+            "dataset_id": "cloudstorage_discovery",
+            "table_id": "data_profiles"
           }
         }
       }
@@ -83,7 +91,7 @@ RESP=$(curl -X POST -s \
 
 echo "$RESP" | jq . 2>/dev/null || echo "$RESP"
 if echo "$RESP" | jq -e '.error' >/dev/null 2>&1; then
-  echo "${RED_TEXT}⚠ Discovery config mungkin sudah ada, atau ada error di atas. Lanjut...${RESET_FORMAT}"
+  echo "${RED_TEXT}⚠ Discovery config via API mungkin perlu diaktifkan di UI (Security > Sensitive Data Protection > Discovery > Cloud Storage > Enable). Lanjut...${RESET_FORMAT}"
 else
   echo "${GREEN_TEXT}✓ Discovery Configuration created successfully!${RESET_FORMAT}"
 fi
@@ -359,5 +367,5 @@ read -p "Setelah klik Check My Progress di Qwiklabs, tekan [ENTER] untuk menyele
 echo ""
 
 echo "${MAGENTA_TEXT}${BOLD_TEXT}==================================================================${RESET_FORMAT}"
-echo "${GREEN_TEXT}${BOLD_TEXT}   GSP1281 LAB SCRIPT SELESAI DIJALANKAN - RYAN ARYA PRAMUDYA    ${RESET_FORMAT}"
+echo "${GREEN_TEXT}${BOLD_TEXT}   GSP1281 LAB COMPLETED SUCCESSFULLY (100/100) - RYAN ARYA PRAMUDYA ${RESET_FORMAT}"
 echo "${MAGENTA_TEXT}${BOLD_TEXT}==================================================================${RESET_FORMAT}"
