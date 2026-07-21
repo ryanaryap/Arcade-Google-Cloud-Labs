@@ -9,17 +9,13 @@ BLUE_TEXT=$'\033[0;94m'
 MAGENTA_TEXT=$'\033[0;95m'
 CYAN_TEXT=$'\033[0;96m'
 WHITE_TEXT=$'\033[0;97m'
-
 NO_COLOR=$'\033[0m'
 RESET_FORMAT=$'\033[0m'
-
-# Define text formatting variables
 BOLD_TEXT=$'\033[1m'
 UNDERLINE_TEXT=$'\033[4m'
 
 clear
 
-# Welcome message
 echo "${CYAN_TEXT}${BOLD_TEXT}==================================================================${RESET_FORMAT}"
 echo "${CYAN_TEXT}${BOLD_TEXT}   ENABLING SENSITIVE DATA PROTECTION DISCOVERY FOR CLOUD STORAGE  ${RESET_FORMAT}"
 echo "${CYAN_TEXT}${BOLD_TEXT}                     RYAN ARYA PRAMUDYA                          ${RESET_FORMAT}"
@@ -27,37 +23,129 @@ echo "${CYAN_TEXT}${BOLD_TEXT}==================================================
 echo ""
 
 # -------------------------------------------------------------------------
-# TASK 1: BigQuery Dataset Setup & Discovery Enablement
+# Setup: project id + enable required APIs
 # -------------------------------------------------------------------------
-echo "${YELLOW_TEXT}${BOLD_TEXT}[Task 1] Setting up BigQuery Dataset cloudstorage_discovery...${RESET_FORMAT}"
-bq mk --dataset --location=us $DEVSHELL_PROJECT_ID:cloudstorage_discovery || true
+export DEVSHELL_PROJECT_ID=$(gcloud config get-value project 2>/dev/null)
+if [ -z "$DEVSHELL_PROJECT_ID" ]; then
+  echo "${RED_TEXT}Gagal mendapatkan project ID. Jalankan 'gcloud config set project PROJECT_ID' dulu.${RESET_FORMAT}"
+  exit 1
+fi
+echo "${GREEN_TEXT}Project ID: $DEVSHELL_PROJECT_ID${RESET_FORMAT}"
 
-echo "${GREEN_TEXT}✓ BigQuery dataset cloudstorage_discovery ready!${RESET_FORMAT}"
+echo "${BLUE_TEXT}Enabling DLP API...${RESET_FORMAT}"
+gcloud services enable dlp.googleapis.com --quiet
+
+TOKEN=$(gcloud auth application-default print-access-token 2>/dev/null || gcloud auth print-access-token)
+
+# -------------------------------------------------------------------------
+# TASK 1: Create and schedule scan configuration
+# -------------------------------------------------------------------------
+echo "${YELLOW_TEXT}${BOLD_TEXT}[Task 1] Creating BigQuery Dataset & Cloud Storage Discovery Config...${RESET_FORMAT}"
+bq mk --dataset --location=us $DEVSHELL_PROJECT_ID:cloudstorage_discovery 2>/dev/null || true
+
+cat <<EOF > discovery_config.json
+{
+  "discoveryConfig": {
+    "displayName": "Cloud Storage Discovery",
+    "status": "RUNNING",
+    "targets": [
+      {
+        "cloudStorageTarget": {
+          "filter": {
+            "allOtherResources": {}
+          }
+        }
+      }
+    ],
+    "actions": [
+      {
+        "publishSummaryToSecurityCommandCenter": {}
+      },
+      {
+        "exportDataProfiles": {
+          "destinationTable": {
+            "projectId": "$DEVSHELL_PROJECT_ID",
+            "datasetId": "cloudstorage_discovery",
+            "tableId": "data_profiles"
+          }
+        }
+      }
+    ]
+  }
+}
+EOF
+
+RESP=$(curl -X POST -s \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d @discovery_config.json \
+  "https://dlp.googleapis.com/v2/projects/$DEVSHELL_PROJECT_ID/locations/us/discoveryConfigs")
+
+echo "$RESP" | jq . 2>/dev/null || echo "$RESP"
+if echo "$RESP" | jq -e '.error' >/dev/null 2>&1; then
+  echo "${RED_TEXT}⚠ Discovery config mungkin sudah ada, atau ada error di atas. Lanjut...${RESET_FORMAT}"
+else
+  echo "${GREEN_TEXT}✓ Discovery Configuration created successfully!${RESET_FORMAT}"
+fi
 echo ""
-echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 UNTUK TASK 1: Aktifkan Discovery di Konsol GCP (Security > Sensitive Data Protection > Discovery > Cloud Storage > Enable -> Nama: Cloud Storage Discovery -> Create).${RESET_FORMAT}"
-read -p "Setelah buat Discovery Config & klik Check My Progress Task 1 di Qwiklabs, tekan [ENTER] untuk lanjut..."
+
+echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 KLIK 'Check My Progress' UNTUK TASK 1 SEKARANG!${RESET_FORMAT}"
+read -p "Setelah klik Check My Progress di Qwiklabs, tekan [ENTER] untuk lanjut ke Task 2..."
 echo ""
 
 # -------------------------------------------------------------------------
-# TASK 2: Inspection Template & De-identification Template
+# TASK 2: Modify existing inspection template & create de-identify template
 # -------------------------------------------------------------------------
-echo "${YELLOW_TEXT}${BOLD_TEXT}[Task 2] Configuring Inspection & De-identification Templates...${RESET_FORMAT}"
+echo "${YELLOW_TEXT}${BOLD_TEXT}[Task 2] Modifying Inspection Template & Creating De-identify Template...${RESET_FORMAT}"
+echo "${BLUE_TEXT}Menunggu inspection template auto-generated oleh discovery config...${RESET_FORMAT}"
 
-export TEMPLATE_ID=$(curl -s \
--H "Authorization: Bearer $(gcloud auth application-default print-access-token)" \
--H "Content-Type: application/json" \
-"https://dlp.googleapis.com/v2/projects/$DEVSHELL_PROJECT_ID/locations/global/inspectTemplates" | jq -r '.inspectTemplates[0].name // empty')
+TEMPLATE_ID=""
+for i in $(seq 1 18); do
+  TOKEN=$(gcloud auth application-default print-access-token 2>/dev/null || gcloud auth print-access-token)
+  TEMPLATE_ID=$(curl -s \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    "https://dlp.googleapis.com/v2/projects/$DEVSHELL_PROJECT_ID/locations/global/inspectTemplates" \
+    | jq -r '.inspectTemplates | sort_by(.createTime) | last | .name // empty')
 
-cat <<EOF > inspection_template.json
+  if [ -n "$TEMPLATE_ID" ] && [ "$TEMPLATE_ID" != "null" ]; then
+    echo "${GREEN_TEXT}✓ Template ditemukan: $TEMPLATE_ID${RESET_FORMAT}"
+    break
+  fi
+  echo "${BLUE_TEXT}Belum ada template (percobaan $i/18), tunggu 10 detik...${RESET_FORMAT}"
+  sleep 10
+done
+
+if [ -z "$TEMPLATE_ID" ] || [ "$TEMPLATE_ID" == "null" ]; then
+  echo "${YELLOW_TEXT}Template tidak muncul via discovery, membuat Inspection Template baru...${RESET_FORMAT}"
+  cat <<EOF > inspection_template_new.json
 {
   "inspectTemplate": {
     "displayName": "Inspection Template for US SSN",
     "description": "This template was created as part of a Sensitive Data Protection profiler configuration and was modified for deeper inspection for US Social Security numbers.",
     "inspectConfig": {
       "infoTypes": [
-        {
-          "name": "US_SOCIAL_SECURITY_NUMBER"
-        }
+        { "name": "US_SOCIAL_SECURITY_NUMBER" }
+      ],
+      "minLikelihood": "UNLIKELY"
+    }
+  }
+}
+EOF
+  TEMPLATE_ID=$(curl -X POST -s \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d @inspection_template_new.json \
+    "https://dlp.googleapis.com/v2/projects/$DEVSHELL_PROJECT_ID/locations/global/inspectTemplates" | jq -r '.name // empty')
+else
+  cat <<EOF > inspection_template.json
+{
+  "inspectTemplate": {
+    "displayName": "Inspection Template for US SSN",
+    "description": "This template was created as part of a Sensitive Data Protection profiler configuration and was modified for deeper inspection for US Social Security numbers.",
+    "inspectConfig": {
+      "infoTypes": [
+        { "name": "US_SOCIAL_SECURITY_NUMBER" }
       ],
       "minLikelihood": "UNLIKELY"
     }
@@ -65,23 +153,13 @@ cat <<EOF > inspection_template.json
 }
 EOF
 
-if [ -z "$TEMPLATE_ID" ] || [ "$TEMPLATE_ID" == "null" ]; then
-  echo "${BLUE_TEXT}Creating new Inspection Template for US SSN...${RESET_FORMAT}"
-  export TEMPLATE_ID=$(curl -X POST -s \
-  -H "Authorization: Bearer $(gcloud auth application-default print-access-token)" \
-  -H "Content-Type: application/json" \
-  -d @inspection_template.json \
-  "https://dlp.googleapis.com/v2/projects/$DEVSHELL_PROJECT_ID/locations/global/inspectTemplates" | jq -r '.name')
-else
-  echo "${BLUE_TEXT}Updating existing Inspection Template ($TEMPLATE_ID)...${RESET_FORMAT}"
-  curl -X PATCH -s \
-  -H "Authorization: Bearer $(gcloud auth application-default print-access-token)" \
-  -H "Content-Type: application/json" \
-  -d @inspection_template.json \
-  "https://dlp.googleapis.com/v2/$TEMPLATE_ID" || true
+  RESP=$(curl -X PATCH -s \
+    -H "Authorization: Bearer $TOKEN" \
+    -H "Content-Type: application/json" \
+    -d @inspection_template.json \
+    "https://dlp.googleapis.com/v2/$TEMPLATE_ID")
+  echo "$RESP" | jq . 2>/dev/null || echo "$RESP"
 fi
-
-echo "${GREEN_TEXT}✓ Inspection Template configured: $TEMPLATE_ID${RESET_FORMAT}"
 
 echo "${BLUE_TEXT}Creating de-identification template us_ssn_deidentify...${RESET_FORMAT}"
 cat <<EOF > deidentify-template.json
@@ -94,35 +172,22 @@ cat <<EOF > deidentify-template.json
         "fieldTransformations": [
           {
             "fields": [
-              {
-                "name": "ssn"
-              },
-              {
-                "name": "email"
-              }
+              { "name": "ssn" },
+              { "name": "email" }
             ],
             "primitiveTransformation": {
               "replaceConfig": {
-                "newValue": {
-                  "stringValue": "[redacted]"
-                }
+                "newValue": { "stringValue": "[redacted]" }
               }
             }
           },
           {
             "fields": [
-              {
-                "name": "message"
-              }
+              { "name": "message" }
             ],
             "infoTypeTransformations": {
               "transformations": [
                 {
-                  "infoTypes": [
-                    {
-                      "name": "US_SOCIAL_SECURITY_NUMBER"
-                    }
-                  ],
                   "primitiveTransformation": {
                     "replaceWithInfoTypeConfig": {}
                   }
@@ -137,13 +202,14 @@ cat <<EOF > deidentify-template.json
 }
 EOF
 
-curl -X POST -s \
--H "Authorization: Bearer $(gcloud auth application-default print-access-token)" \
--H "Content-Type: application/json" \
--d @deidentify-template.json \
-"https://dlp.googleapis.com/v2/projects/$DEVSHELL_PROJECT_ID/locations/global/deidentifyTemplates?deidentifyTemplateId=us_ssn_deidentify" || true
+RESP=$(curl -X POST -s \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d @deidentify-template.json \
+  "https://dlp.googleapis.com/v2/projects/$DEVSHELL_PROJECT_ID/locations/global/deidentifyTemplates?deidentifyTemplateId=us_ssn_deidentify")
+echo "$RESP" | jq . 2>/dev/null || echo "$RESP"
 
-echo "${GREEN_TEXT}✓ De-identification template us_ssn_deidentify created!${RESET_FORMAT}"
+echo "${GREEN_TEXT}✓ Inspection & De-identification Templates configured!${RESET_FORMAT}"
 echo ""
 
 echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 KLIK 'Check My Progress' UNTUK TASK 2 SEKARANG!${RESET_FORMAT}"
@@ -151,10 +217,10 @@ read -p "Setelah klik Check My Progress di Qwiklabs, tekan [ENTER] untuk lanjut 
 echo ""
 
 # -------------------------------------------------------------------------
-# TASK 3: Create and run inspection job (us_ssn_inspection)
+# TASK 3: Create and run an inspection job
 # -------------------------------------------------------------------------
-echo "${YELLOW_TEXT}${BOLD_TEXT}[Task 3] Creating and Running Inspection Job us_ssn_inspection...${RESET_FORMAT}"
-bq mk --dataset --location=us $DEVSHELL_PROJECT_ID:cloudstorage_inspection || true
+echo "${YELLOW_TEXT}${BOLD_TEXT}[Task 3] Creating and Running Inspection Job (us_ssn_inspection)...${RESET_FORMAT}"
+bq mk --dataset --location=us $DEVSHELL_PROJECT_ID:cloudstorage_inspection 2>/dev/null || true
 
 cat <<EOF > inspect_job.json
 {
@@ -165,10 +231,7 @@ cat <<EOF > inspect_job.json
         "fileSet": {
           "url": "gs://${DEVSHELL_PROJECT_ID}-input/*"
         },
-        "fileTypes": [
-          "TEXT_FILE",
-          "CSV"
-        ]
+        "fileTypes": ["TEXT_FILE", "CSV"]
       }
     },
     "inspectTemplateName": "$TEMPLATE_ID",
@@ -193,13 +256,31 @@ cat <<EOF > inspect_job.json
 }
 EOF
 
-curl -X POST -s \
--H "Authorization: Bearer $(gcloud auth application-default print-access-token)" \
--H "Content-Type: application/json" \
--d @inspect_job.json \
-"https://dlp.googleapis.com/v2/projects/$DEVSHELL_PROJECT_ID/locations/us/dlpJobs" || true
+TOKEN=$(gcloud auth application-default print-access-token 2>/dev/null || gcloud auth print-access-token)
+RESP=$(curl -X POST -s \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d @inspect_job.json \
+  "https://dlp.googleapis.com/v2/projects/$DEVSHELL_PROJECT_ID/locations/us/dlpJobs")
+echo "$RESP" | jq . 2>/dev/null || echo "$RESP"
 
-echo "${GREEN_TEXT}✓ Inspection job us_ssn_inspection created and executed!${RESET_FORMAT}"
+INSPECT_JOB_NAME=$(echo "$RESP" | jq -r '.name // empty')
+
+if [ -n "$INSPECT_JOB_NAME" ]; then
+  echo "${BLUE_TEXT}Menunggu inspection job selesai (DONE)...${RESET_FORMAT}"
+  for i in $(seq 1 30); do
+    TOKEN=$(gcloud auth application-default print-access-token 2>/dev/null || gcloud auth print-access-token)
+    STATE=$(curl -s -H "Authorization: Bearer $TOKEN" \
+      "https://dlp.googleapis.com/v2/$INSPECT_JOB_NAME" | jq -r '.state // empty')
+    echo "  Status: $STATE (cek $i/30)"
+    if [ "$STATE" == "DONE" ] || [ "$STATE" == "FAILED" ]; then
+      break
+    fi
+    sleep 15
+  done
+fi
+
+echo "${GREEN_TEXT}✓ Inspection Job us_ssn_inspection created and started!${RESET_FORMAT}"
 echo ""
 
 echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 KLIK 'Check My Progress' UNTUK TASK 3 SEKARANG!${RESET_FORMAT}"
@@ -207,10 +288,10 @@ read -p "Setelah klik Check My Progress di Qwiklabs, tekan [ENTER] untuk lanjut 
 echo ""
 
 # -------------------------------------------------------------------------
-# TASK 4: Create and run de-identification job (us_ssn_deidentify)
+# TASK 4: Create and run a de-identification job
 # -------------------------------------------------------------------------
-echo "${YELLOW_TEXT}${BOLD_TEXT}[Task 4] Creating and Running De-identification Job us_ssn_deidentify...${RESET_FORMAT}"
-bq mk --dataset --location=us $DEVSHELL_PROJECT_ID:cloudstorage_transformations || true
+echo "${YELLOW_TEXT}${BOLD_TEXT}[Task 4] Creating and Running De-identification Job (us_ssn_deidentify)...${RESET_FORMAT}"
+bq mk --dataset --location=us $DEVSHELL_PROJECT_ID:cloudstorage_transformations 2>/dev/null || true
 
 cat <<EOF > deidentify_job.json
 {
@@ -221,10 +302,7 @@ cat <<EOF > deidentify_job.json
         "fileSet": {
           "url": "gs://${DEVSHELL_PROJECT_ID}-input/*"
         },
-        "fileTypes": [
-          "TEXT_FILE",
-          "CSV"
-        ]
+        "fileTypes": ["TEXT_FILE", "CSV"]
       }
     },
     "actions": [
@@ -248,13 +326,31 @@ cat <<EOF > deidentify_job.json
 }
 EOF
 
-curl -X POST -s \
--H "Authorization: Bearer $(gcloud auth application-default print-access-token)" \
--H "Content-Type: application/json" \
--d @deidentify_job.json \
-"https://dlp.googleapis.com/v2/projects/$DEVSHELL_PROJECT_ID/locations/us/dlpJobs" || true
+TOKEN=$(gcloud auth application-default print-access-token 2>/dev/null || gcloud auth print-access-token)
+RESP=$(curl -X POST -s \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d @deidentify_job.json \
+  "https://dlp.googleapis.com/v2/projects/$DEVSHELL_PROJECT_ID/locations/us/dlpJobs")
+echo "$RESP" | jq . 2>/dev/null || echo "$RESP"
 
-echo "${GREEN_TEXT}✓ De-identification job us_ssn_deidentify created and executed!${RESET_FORMAT}"
+DEID_JOB_NAME=$(echo "$RESP" | jq -r '.name // empty')
+
+if [ -n "$DEID_JOB_NAME" ]; then
+  echo "${BLUE_TEXT}Menunggu de-identify job selesai (DONE)...${RESET_FORMAT}"
+  for i in $(seq 1 30); do
+    TOKEN=$(gcloud auth application-default print-access-token 2>/dev/null || gcloud auth print-access-token)
+    STATE=$(curl -s -H "Authorization: Bearer $TOKEN" \
+      "https://dlp.googleapis.com/v2/$DEID_JOB_NAME" | jq -r '.state // empty')
+    echo "  Status: $STATE (cek $i/30)"
+    if [ "$STATE" == "DONE" ] || [ "$STATE" == "FAILED" ]; then
+      break
+    fi
+    sleep 15
+  done
+fi
+
+echo "${GREEN_TEXT}✓ De-identification Job us_ssn_deidentify created and started!${RESET_FORMAT}"
 echo ""
 
 echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 KLIK 'Check My Progress' UNTUK TASK 4 SEKARANG!${RESET_FORMAT}"
