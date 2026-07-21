@@ -45,28 +45,28 @@ bq mk --dataset --location=us $DEVSHELL_PROJECT_ID:cloudstorage_discovery 2>/dev
 
 cat <<EOF > discovery_config.json
 {
-  "discovery_config": {
-    "display_name": "Cloud Storage Discovery",
+  "discoveryConfig": {
+    "displayName": "Cloud Storage Discovery",
     "status": "RUNNING",
     "targets": [
       {
-        "cloud_storage_target": {
+        "cloudStorageTarget": {
           "filter": {
-            "other_cloud_storage_resources": {}
+            "others": {}
           }
         }
       }
     ],
     "actions": [
       {
-        "publish_summary_to_security_command_center": {}
+        "publishToScc": {}
       },
       {
-        "export_data_profiles": {
-          "destination_table": {
-            "project_id": "$DEVSHELL_PROJECT_ID",
-            "dataset_id": "cloudstorage_discovery",
-            "table_id": "data_profiles"
+        "exportData": {
+          "profileTable": {
+            "projectId": "$DEVSHELL_PROJECT_ID",
+            "datasetId": "cloudstorage_discovery",
+            "tableId": "data_profiles"
           }
         }
       }
@@ -97,28 +97,26 @@ echo ""
 # TASK 2: Modify existing inspection template & create de-identify template
 # -------------------------------------------------------------------------
 echo "${YELLOW_TEXT}${BOLD_TEXT}[Task 2] Modifying Inspection Template & Creating De-identify Template...${RESET_FORMAT}"
-echo "${BLUE_TEXT}Menunggu inspection template auto-generated oleh discovery config...${RESET_FORMAT}"
+echo "${BLUE_TEXT}Mengecek ketersediaan inspection template...${RESET_FORMAT}"
 
 TEMPLATE_ID=""
-for i in $(seq 1 18); do
+for i in $(seq 1 3); do
   TOKEN=$(gcloud auth application-default print-access-token 2>/dev/null || gcloud auth print-access-token)
-  RESP_TEMPLATES=$(curl -s \
+  TEMPLATE_ID=$(curl -s \
     -H "Authorization: Bearer $TOKEN" \
     -H "Content-Type: application/json" \
-    "https://dlp.googleapis.com/v2/projects/$DEVSHELL_PROJECT_ID/locations/global/inspectTemplates")
-  
-  TEMPLATE_ID=$(echo "$RESP_TEMPLATES" | jq -r 'if .inspectTemplates then (.inspectTemplates | sort_by(.createTime) | last | .name) else "" end' 2>/dev/null)
+    "https://dlp.googleapis.com/v2/projects/$DEVSHELL_PROJECT_ID/locations/global/inspectTemplates" \
+    | jq -r '(.inspectTemplates // []) | sort_by(.createTime) | last | .name // empty' 2>/dev/null)
 
   if [ -n "$TEMPLATE_ID" ] && [ "$TEMPLATE_ID" != "null" ]; then
     echo "${GREEN_TEXT}✓ Template ditemukan: $TEMPLATE_ID${RESET_FORMAT}"
     break
   fi
-  echo "${BLUE_TEXT}Belum ada template (percobaan $i/18), tunggu 10 detik...${RESET_FORMAT}"
-  sleep 10
+  sleep 2
 done
 
 if [ -z "$TEMPLATE_ID" ] || [ "$TEMPLATE_ID" == "null" ]; then
-  echo "${YELLOW_TEXT}Template tidak muncul via discovery, membuat Inspection Template baru...${RESET_FORMAT}"
+  echo "${YELLOW_TEXT}Template belum ada, otomatis membuat Inspection Template baru...${RESET_FORMAT}"
   cat <<EOF > inspection_template_new.json
 {
   "inspectTemplate": {
@@ -133,11 +131,13 @@ if [ -z "$TEMPLATE_ID" ] || [ "$TEMPLATE_ID" == "null" ]; then
   }
 }
 EOF
-  TEMPLATE_ID=$(curl -X POST -s \
+  RESP=$(curl -X POST -s \
     -H "Authorization: Bearer $TOKEN" \
     -H "Content-Type: application/json" \
     -d @inspection_template_new.json \
-    "https://dlp.googleapis.com/v2/projects/$DEVSHELL_PROJECT_ID/locations/global/inspectTemplates" | jq -r '.name // empty')
+    "https://dlp.googleapis.com/v2/projects/$DEVSHELL_PROJECT_ID/locations/global/inspectTemplates")
+  TEMPLATE_ID=$(echo "$RESP" | jq -r '.name // empty')
+  echo "${GREEN_TEXT}✓ Inspection Template baru berhasil dibuat: $TEMPLATE_ID${RESET_FORMAT}"
 else
   cat <<EOF > inspection_template.json
 {
@@ -359,5 +359,5 @@ read -p "Setelah klik Check My Progress di Qwiklabs, tekan [ENTER] untuk menyele
 echo ""
 
 echo "${MAGENTA_TEXT}${BOLD_TEXT}==================================================================${RESET_FORMAT}"
-echo "${GREEN_TEXT}${BOLD_TEXT}   GSP1281 LAB COMPLETED SUCCESSFULLY (100/100) - RYAN ARYA PRAMUDYA ${RESET_FORMAT}"
+echo "${GREEN_TEXT}${BOLD_TEXT}   GSP1281 LAB SCRIPT SELESAI DIJALANKAN - RYAN ARYA PRAMUDYA    ${RESET_FORMAT}"
 echo "${MAGENTA_TEXT}${BOLD_TEXT}==================================================================${RESET_FORMAT}"
