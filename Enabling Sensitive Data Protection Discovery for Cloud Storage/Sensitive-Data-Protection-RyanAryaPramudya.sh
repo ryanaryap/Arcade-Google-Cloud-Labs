@@ -45,7 +45,7 @@ bq mk --dataset --location=us $DEVSHELL_PROJECT_ID:cloudstorage_discovery 2>/dev
 
 echo "${GREEN_TEXT}✓ BigQuery Dataset cloudstorage_discovery ready!${RESET_FORMAT}"
 echo ""
-echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 UNTUK TASK 1: Aktifkan Discovery di Konsol GCP (Security > Sensitive Data Protection > Discovery > Cloud Storage > Enable -> Display Name: Cloud Storage Discovery -> Create).${RESET_FORMAT}"
+echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 UNTUK TASK 1: Jika belum, aktifkan Discovery di Konsol GCP (Security > Sensitive Data Protection > Discovery > Cloud Storage > Enable -> Display Name: Cloud Storage Discovery -> Create).${RESET_FORMAT}"
 read -p "Setelah klik Check My Progress Task 1 di Qwiklabs, tekan [ENTER] untuk lanjut ke Task 2..."
 echo ""
 
@@ -121,8 +121,8 @@ fi
 echo "${BLUE_TEXT}Creating de-identification template us_ssn_deidentify...${RESET_FORMAT}"
 cat <<EOF > deidentify-template.json
 {
+  "templateId": "us_ssn_deidentify",
   "deidentifyTemplate": {
-    "name": "projects/$DEVSHELL_PROJECT_ID/locations/global/deidentifyTemplates/us_ssn_deidentify",
     "displayName": "Template De-identifikasi untuk SSN AS",
     "description": "Deidentifies SSN, Email and InfoTypes",
     "deidentifyConfig": {
@@ -239,7 +239,7 @@ echo "${GREEN_TEXT}✓ Inspection Job us_ssn_inspection created and started!${RE
 echo ""
 
 echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 KLIK 'Check My Progress' UNTUK TASK 3 SEKARANG!${RESET_FORMAT}"
-read -p "Setelah klik Check My Progress di Qwiklabs, tekan [ENTER] untuk lanjut ke Task 4..."
+read -p "Setelah klik Check My Progress di Qwiklabs, tekan [ENTER] Untuk lanjut ke Task 4..."
 echo ""
 
 # -------------------------------------------------------------------------
