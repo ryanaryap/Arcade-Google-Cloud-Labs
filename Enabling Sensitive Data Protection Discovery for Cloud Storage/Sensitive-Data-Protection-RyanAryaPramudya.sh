@@ -45,28 +45,28 @@ bq mk --dataset --location=us $DEVSHELL_PROJECT_ID:cloudstorage_discovery 2>/dev
 
 cat <<EOF > discovery_config.json
 {
-  "discoveryConfig": {
-    "displayName": "Cloud Storage Discovery",
+  "discovery_config": {
+    "display_name": "Cloud Storage Discovery",
     "status": "RUNNING",
     "targets": [
       {
-        "cloudStorageTarget": {
+        "cloud_storage_target": {
           "filter": {
-            "allOtherResources": {}
+            "other_cloud_storage_resources": {}
           }
         }
       }
     ],
     "actions": [
       {
-        "publishSummaryToSecurityCommandCenter": {}
+        "publish_summary_to_security_command_center": {}
       },
       {
-        "exportDataProfiles": {
-          "destinationTable": {
-            "projectId": "$DEVSHELL_PROJECT_ID",
-            "datasetId": "cloudstorage_discovery",
-            "tableId": "data_profiles"
+        "export_data_profiles": {
+          "destination_table": {
+            "project_id": "$DEVSHELL_PROJECT_ID",
+            "dataset_id": "cloudstorage_discovery",
+            "table_id": "data_profiles"
           }
         }
       }
@@ -102,11 +102,12 @@ echo "${BLUE_TEXT}Menunggu inspection template auto-generated oleh discovery con
 TEMPLATE_ID=""
 for i in $(seq 1 18); do
   TOKEN=$(gcloud auth application-default print-access-token 2>/dev/null || gcloud auth print-access-token)
-  TEMPLATE_ID=$(curl -s \
+  RESP_TEMPLATES=$(curl -s \
     -H "Authorization: Bearer $TOKEN" \
     -H "Content-Type: application/json" \
-    "https://dlp.googleapis.com/v2/projects/$DEVSHELL_PROJECT_ID/locations/global/inspectTemplates" \
-    | jq -r '.inspectTemplates | sort_by(.createTime) | last | .name // empty')
+    "https://dlp.googleapis.com/v2/projects/$DEVSHELL_PROJECT_ID/locations/global/inspectTemplates")
+  
+  TEMPLATE_ID=$(echo "$RESP_TEMPLATES" | jq -r 'if .inspectTemplates then (.inspectTemplates | sort_by(.createTime) | last | .name) else "" end' 2>/dev/null)
 
   if [ -n "$TEMPLATE_ID" ] && [ "$TEMPLATE_ID" != "null" ]; then
     echo "${GREEN_TEXT}✓ Template ditemukan: $TEMPLATE_ID${RESET_FORMAT}"
