@@ -39,8 +39,8 @@ gsutil ls -L "gs://$BUCKET/dummy_transactions"
 echo "${GREEN_TEXT}✓ Retention policy set and dummy_transactions uploaded!${RESET_FORMAT}"
 echo ""
 
-echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 KLIK 'Check My Progress' UNTUK TASK 1 & TASK 2 SEKARANG!${RESET_FORMAT}"
-read -p "Setelah klik Check My Progress di Qwiklabs, tekan [ENTER] untuk lanjut ke Task 3..."
+echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 CLICK 'Check My Progress' FOR TASK 1 & TASK 2 NOW!${RESET_FORMAT}"
+read -p "After clicking Check My Progress in Qwiklabs, press [ENTER] to continue to Task 3..."
 echo ""
 
 echo "${YELLOW_TEXT}${BOLD_TEXT}[Task 3] Locking Retention Policy...${RESET_FORMAT}"
@@ -49,8 +49,8 @@ gsutil retention get "gs://$BUCKET"
 echo "${GREEN_TEXT}✓ Retention policy locked successfully!${RESET_FORMAT}"
 echo ""
 
-echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 KLIK 'Check My Progress' UNTUK TASK 3 SEKARANG!${RESET_FORMAT}"
-read -p "Setelah klik Check My Progress di Qwiklabs, tekan [ENTER] untuk lanjut ke Task 4..."
+echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 CLICK 'Check My Progress' FOR TASK 3 NOW!${RESET_FORMAT}"
+read -p "After clicking Check My Progress in Qwiklabs, press [ENTER] to continue to Task 4..."
 echo ""
 
 echo "${YELLOW_TEXT}${BOLD_TEXT}[Task 4] Setting Up Temporary Hold & Removing Object...${RESET_FORMAT}"
@@ -63,8 +63,8 @@ gsutil rm "gs://$BUCKET/dummy_transactions"
 echo "${GREEN_TEXT}✓ Temporary hold set, released, and dummy_transactions removed!${RESET_FORMAT}"
 echo ""
 
-echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 KLIK 'Check My Progress' UNTUK TASK 4 SEKARANG!${RESET_FORMAT}"
-read -p "Setelah klik Check My Progress di Qwiklabs, tekan [ENTER] untuk lanjut ke Task 5..."
+echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 CLICK 'Check My Progress' FOR TASK 4 NOW!${RESET_FORMAT}"
+read -p "After clicking Check My Progress in Qwiklabs, press [ENTER] to continue to Task 5..."
 echo ""
 
 echo "${YELLOW_TEXT}${BOLD_TEXT}[Task 5] Setting Up Event-Based Hold & Removing Object...${RESET_FORMAT}"
@@ -78,8 +78,8 @@ gsutil rm "gs://$BUCKET/dummy_loan"
 echo "${GREEN_TEXT}✓ Event-based hold set, released, and dummy_loan removed!${RESET_FORMAT}"
 echo ""
 
-echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 KLIK 'Check My Progress' UNTUK TASK 5 SEKARANG!${RESET_FORMAT}"
-read -p "Setelah klik Check My Progress di Qwiklabs, tekan [ENTER] untuk menyelesaikan lab..."
+echo "${MAGENTA_TEXT}${BOLD_TEXT}👉 CLICK 'Check My Progress' FOR TASK 5 NOW!${RESET_FORMAT}"
+read -p "After clicking Check My Progress in Qwiklabs, press [ENTER] to finish the lab..."
 echo ""
 
 echo "${MAGENTA_TEXT}${BOLD_TEXT}==================================================================${RESET_FORMAT}"
